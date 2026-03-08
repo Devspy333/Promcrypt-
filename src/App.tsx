@@ -17,39 +17,8 @@ interface FileData {
 const ASCII_HEADER = `╔═══════════════════════════════════╗
 ║   PROMCRYPT TERMINAL v1.0         ║
 ║   "Harness the fire of encryption"║
+║   Created by shadowdev            ║
 ╚═══════════════════════════════════╝`;
-
-function xorHex(text: string): string {
-  return Array.from(text).map(c => 
-    (c.charCodeAt(0) ^ 0xAA).toString(16).padStart(2,'0')
-  ).join('');
-}
-
-async function aesEncrypt(plaintext: string, bits: 128 | 256 = 128): Promise<string> {
-  const key = await crypto.subtle.generateKey(
-    { name: "AES-GCM", length: bits },
-    true,
-    ["encrypt"]
-  );
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    encoded
-  );
-  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(ciphertext), iv.length);
-  
-  let binary = '';
-  const bytes = new Uint8Array(combined);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
 
 function minifyLua(code: string): { minified: string, renamedCount: number } {
   const localRegex = /local\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
@@ -86,6 +55,7 @@ export default function App() {
   const [resultFileName, setResultFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [isDragging, setIsDragging] = useState(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +69,7 @@ export default function App() {
   };
 
   const handleDownloadPrometheus = async () => {
-    addLog('$> Fetching latest Prometheus release...');
+    addLog('$> Fetching latest Promcrypt release...');
     try {
       const res = await fetch('https://api.github.com/repos/prometheus/prometheus/releases/latest');
       if (!res.ok) throw new Error(`GitHub API responded with ${res.status}`);
@@ -113,7 +83,7 @@ export default function App() {
         addLog('$> Error: Could not find linux-amd64 asset in the latest release.');
       }
     } catch (err: any) {
-      addLog(`$> Error fetching Prometheus: ${err.message}`);
+      addLog(`$> Error fetching Promcrypt: ${err.message}`);
     }
   };
 
@@ -125,17 +95,31 @@ export default function App() {
     }
 
     const reader = new FileReader();
+    
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setFile({
-        name: uploadedFile.name,
-        content,
-        ext
-      });
-      setResult(null);
-      setResultFileName(null);
-      addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
+      try {
+        const content = event.target?.result as string;
+        setFile({
+          name: uploadedFile.name,
+          content,
+          ext
+        });
+        setResult(null);
+        setResultFileName(null);
+        addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
+      } catch (err) {
+        addLog(`$> Error: Failed to process file content.`);
+      }
     };
+    
+    reader.onerror = () => {
+      addLog(`$> Error: I/O error occurred while reading the file.`);
+    };
+    
+    reader.onabort = () => {
+      addLog(`$> Error: File reading was aborted.`);
+    };
+    
     reader.readAsText(uploadedFile);
     
     if (fileInputRef.current) {
@@ -152,6 +136,7 @@ export default function App() {
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile) {
       processFile(droppedFile);
@@ -160,6 +145,11 @@ export default function App() {
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
   };
 
   const handlePresetChange = (newPreset: Preset) => {
@@ -180,30 +170,17 @@ export default function App() {
       let finalContent = '';
       let finalName = '';
 
-      if (file.ext === 'txt') {
-        if (preset === 'Minify') {
-          finalContent = btoa(file.content);
-          finalName = file.name.replace('.txt', '.min.txt');
-        } else if (preset === 'Weak') {
-          finalContent = xorHex(file.content);
-          finalName = file.name.replace('.txt', '.xor.txt');
-        } else if (preset === 'Medium') {
-          finalContent = await aesEncrypt(file.content, 128);
-          finalName = file.name.replace('.txt', '.enc.txt');
-        } else if (preset === 'Strong') {
-          finalContent = await aesEncrypt(file.content, 256);
-          finalName = file.name.replace('.txt', '.enc.txt');
-        }
-      } else if (file.ext === 'lua') {
-        addLog(`$> Obfuscating Lua script with preset: ${preset}...`);
-        // Yield to event loop so UI can update
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        finalContent = obfuscate(file.content, preset);
-        finalName = file.name.replace('.lua', `.${preset.toLowerCase()}.lua`);
-        
-        addLog(`$> Obfuscation complete.`);
-      }
+      addLog(`$> Obfuscating with preset: ${preset}...`);
+      // Yield to event loop so UI can update
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      finalContent = obfuscate(file.content, preset);
+      finalContent = `return(function(...)local shadowdev={"${finalContent.replace(/"/g, '\\"')}"}
+-- Encryption text here
+end)(...)`;
+      finalName = file.name.replace(/\.(txt|lua)$/, `.${preset.toLowerCase()}.lua`);
+      
+      addLog(`$> Obfuscation complete.`);
 
       setResult(finalContent);
       setResultFileName(finalName);
@@ -259,9 +236,10 @@ export default function App() {
 
   return (
     <div 
-      className="min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto"
+      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
     >
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4">
@@ -314,7 +292,7 @@ export default function App() {
                   <TerminalButton 
                     onClick={handleDownloadPrometheus}
                   >
-                    Download Prometheus
+                    Download Promcrypt
                   </TerminalButton>
                   
                   <input 
