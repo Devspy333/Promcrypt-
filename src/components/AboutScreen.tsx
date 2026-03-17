@@ -22,6 +22,9 @@ export default function AboutScreen() {
         Whether you need simple minification or robust AES-256-GCM encryption, 
         Promcrypt has a preset to match your security requirements.
       </p>
+      <p className="mb-6 text-sm leading-relaxed opacity-80">
+        Join our Discord server: <a href="https://discord.gg/z5GwQ2fhYJ" target="_blank" rel="noopener noreferrer" className="text-[#00FF00] underline">https://discord.gg/z5GwQ2fhYJ</a>
+      </p>
       
       <div className="markdown-body text-sm opacity-80">
         <Markdown remarkPlugins={[remarkGfm]}>{PROMCRYPT_DOCS}</Markdown>

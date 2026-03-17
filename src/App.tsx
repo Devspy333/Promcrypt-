@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { obfuscate } from './prometheus-bundle.js';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
+import StatsScreen from './components/StatsScreen';
 import TerminalButton from './components/TerminalButton';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong';
-type Page = 'home' | 'table' | 'about';
+type Page = 'home' | 'table' | 'about' | 'stats';
 
 interface FileData {
   name: string;
@@ -17,7 +18,7 @@ interface FileData {
 const ASCII_HEADER = `╔═══════════════════════════════════╗
 ║   PROMCRYPT TERMINAL v1.0         ║
 ║   "Harness the fire of encryption"║
-║   Created by shadowdev            ║
+║   Created by iamnotvision         ║
 ╚═══════════════════════════════════╝`;
 
 function minifyLua(code: string): { minified: string, renamedCount: number } {
@@ -54,11 +55,17 @@ export default function App() {
   const [result, setResult] = useState<string | null>(null);
   const [resultFileName, setResultFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [visitCount, setVisitCount] = useState(0);
+  const [uploadCount, setUploadCount] = useState(0);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isDragging, setIsDragging] = useState(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setVisitCount(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,6 +111,7 @@ export default function App() {
           content,
           ext
         });
+        setUploadCount(prev => prev + 1);
         setResult(null);
         setResultFileName(null);
         addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
@@ -175,8 +183,9 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       finalContent = obfuscate(file.content, preset);
-      finalContent = `return(function(...)local shadowdev={"${finalContent.replace(/"/g, '\\"')}"}
+      finalContent = `return(function(...)local shadowdev1={"${finalContent.replace(/"/g, '\\"')}"}
 -- Encryption text here
+With also shadowdev1 
 end)(...)`;
       finalName = file.name.replace(/\.(txt|lua)$/, `.${preset.toLowerCase()}.lua`);
       
@@ -243,7 +252,7 @@ end)(...)`;
     >
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4">
-        {(['home', 'table', 'about'] as Page[]).map(page => (
+        {(['home', 'table', 'about', 'stats'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -359,6 +368,7 @@ end)(...)`;
           )}
           {currentPage === 'table' && <TableScreen />}
           {currentPage === 'about' && <AboutScreen />}
+          {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
         </motion.div>
       </AnimatePresence>
     </div>

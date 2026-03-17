@@ -42,7 +42,7 @@ export default function TableScreen() {
           </tr>
         </tbody>
       </table>
-      <p className="mt-6 text-sm opacity-80">Created by shadowdev</p>
+      <p className="mt-6 text-sm opacity-80">Created by iamnotvision</p>
     </motion.div>
   );
 }
