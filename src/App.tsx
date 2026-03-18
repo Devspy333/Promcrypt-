@@ -5,8 +5,9 @@ import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
 import TerminalButton from './components/TerminalButton';
+import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 
-type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong';
+type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
 type Page = 'home' | 'table' | 'about' | 'stats';
 
 interface FileData {
@@ -48,10 +49,67 @@ function minifyLua(code: string): { minified: string, renamedCount: number } {
   return { minified, renamedCount: uniqueLocals.length };
 }
 
+const analyzeFileContent = async (file: File): Promise<{ type: string, isText: boolean, error?: string }> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const bytes = new Uint8Array(buffer);
+      
+      if (bytes.length >= 4) {
+        // Check magic numbers
+        if (bytes[0] === 0x1B && bytes[1] === 0x4C && bytes[2] === 0x75 && bytes[3] === 0x61) {
+          return resolve({ type: 'Compiled Lua', isText: false, error: 'Compiled Lua files are not supported for obfuscation.' });
+        }
+        if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+          return resolve({ type: 'ZIP/APK Archive', isText: false, error: 'Archives are not supported.' });
+        }
+        if (bytes[0] === 0x7F && bytes[1] === 0x45 && bytes[2] === 0x4C && bytes[3] === 0x46) {
+          return resolve({ type: 'ELF Executable', isText: false, error: 'Executables are not supported.' });
+        }
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+          return resolve({ type: 'PNG Image', isText: false, error: 'Images are not supported.' });
+        }
+        if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+          return resolve({ type: 'PDF Document', isText: false, error: 'PDFs are not supported.' });
+        }
+      }
+      
+      // Basic text detection: check for null bytes in the first chunk
+      let isText = true;
+      for (let i = 0; i < Math.min(bytes.length, 512); i++) {
+        if (bytes[i] === 0) {
+          isText = false;
+          break;
+        }
+      }
+      
+      if (!isText) {
+        return resolve({ type: 'Binary Data', isText: false, error: 'Binary files are not supported. Please upload plain text or Lua source code.' });
+      }
+      
+      resolve({ type: 'Text/Source Code', isText: true });
+    };
+    
+    reader.onerror = () => resolve({ type: 'Unknown', isText: false, error: 'Failed to read file for analysis.' });
+    
+    const slice = file.slice(0, 512);
+    reader.readAsArrayBuffer(slice);
+  });
+};
+
 export default function App() {
   const [logs, setLogs] = useState<string[]>([ASCII_HEADER, '$> Ready.']);
   const [file, setFile] = useState<FileData | null>(null);
   const [preset, setPreset] = useState<Preset>('Minify');
+  const [customConfig, setCustomConfig] = useState<CustomPresetConfig>({
+    LuaVersion: 'Lua51',
+    VarNamePrefix: '',
+    NameGenerator: 'MangledShuffled',
+    PrettyPrint: false,
+    Seed: 0,
+    Steps: []
+  });
   const [result, setResult] = useState<string | null>(null);
   const [resultFileName, setResultFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -75,30 +133,45 @@ export default function App() {
     setLogs(prev => [...prev, msg]);
   };
 
-  const handleDownloadPrometheus = async () => {
-    addLog('$> Fetching latest Promcrypt release...');
+  const handleDownloadAPK = async () => {
+    addLog('$> Fetching Promcrypt APK...');
     try {
-      const res = await fetch('https://api.github.com/repos/prometheus/prometheus/releases/latest');
-      if (!res.ok) throw new Error(`GitHub API responded with ${res.status}`);
-      const data = await res.json();
-      const asset = data.assets.find((a: any) => a.browser_download_url.includes('linux-amd64'));
+      // Try to fetch the actual APK from the public folder
+      const response = await fetch('/promcrypt.apk', { method: 'HEAD' });
       
-      if (asset) {
-        addLog(`$> Download started: ${asset.name}`);
-        window.location.href = asset.browser_download_url;
+      if (response.ok) {
+        addLog('$> Download started: promcrypt.apk');
+        const a = document.createElement('a');
+        a.href = '/promcrypt.apk';
+        a.download = 'promcrypt.apk';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       } else {
-        addLog('$> Error: Could not find linux-amd64 asset in the latest release.');
+        addLog('$> ERROR: Real APK not found on server.');
+        addLog('$> FIX: Please upload your actual "promcrypt.apk" file into the "public" folder of this project using the file explorer on the left.');
+        addLog('$> The previous download was a placeholder text file, which causes the "problem parsing the package" error on Android.');
       }
     } catch (err: any) {
-      addLog(`$> Error fetching Promcrypt: ${err.message}`);
+      addLog(`$> Error checking for APK: ${err.message}`);
     }
   };
 
-  const processFile = (uploadedFile: File) => {
+  const processFile = async (uploadedFile: File) => {
     const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || '';
-    if (ext !== 'txt' && ext !== 'lua') {
-      addLog(`$> Error: Unsupported file type .${ext}. Only .txt and .lua are allowed.`);
+    
+    addLog(`$> Analyzing file: ${uploadedFile.name}...`);
+    
+    const analysis = await analyzeFileContent(uploadedFile);
+    
+    if (!analysis.isText) {
+      addLog(`$> Error: Detected ${analysis.type}. ${analysis.error}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
+    }
+    
+    if (ext !== 'txt' && ext !== 'lua') {
+      addLog(`$> Warning: File extension .${ext} is unusual, but content appears to be text. Proceeding...`);
     }
 
     const reader = new FileReader();
@@ -182,7 +255,8 @@ export default function App() {
       // Yield to event loop so UI can update
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      finalContent = obfuscate(file.content, preset);
+      const configToUse = preset === 'Custom' ? customConfig : preset;
+      finalContent = obfuscate(file.content, configToUse);
       finalContent = `return(function(...)local shadowdev1={"${finalContent.replace(/"/g, '\\"')}"}
 -- Encryption text here
 With also shadowdev1 
@@ -245,13 +319,13 @@ end)(...)`;
 
   return (
     <div 
-      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''}`}
+      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
       {/* Navigation */}
-      <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4">
+      <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4 relative z-10">
         {(['home', 'table', 'about', 'stats'] as Page[]).map(page => (
           <button
             key={page}
@@ -270,6 +344,7 @@ end)(...)`;
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="relative z-10"
         >
           {currentPage === 'home' && (
             <>
@@ -299,14 +374,14 @@ end)(...)`;
                 {/* Main Actions */}
                 <div className="flex flex-wrap gap-4">
                   <TerminalButton 
-                    onClick={handleDownloadPrometheus}
+                    onClick={handleDownloadAPK}
                   >
-                    Download Promcrypt
+                    Download APK
                   </TerminalButton>
                   
                   <input 
                     type="file" 
-                    accept=".txt,.lua" 
+                    accept="*" 
                     ref={fileInputRef}
                     onChange={handleFileUpload}
                     className="hidden" 
@@ -321,7 +396,7 @@ end)(...)`;
                 {/* Presets */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="uppercase text-sm mr-2 opacity-70">Select Preset:</span>
-                  {(['Minify', 'Weak', 'Medium', 'Strong'] as Preset[]).map(p => (
+                  {(['Minify', 'Weak', 'Medium', 'Strong', 'Custom'] as Preset[]).map(p => (
                     <TerminalButton
                       key={p}
                       onClick={() => handlePresetChange(p)}
@@ -331,6 +406,10 @@ end)(...)`;
                     </TerminalButton>
                   ))}
                 </div>
+
+                {preset === 'Custom' && (
+                  <CustomPresetPanel config={customConfig} onChange={setCustomConfig} />
+                )}
 
                 {/* Execution Actions */}
                 <div className="flex flex-wrap gap-4 mt-2">
