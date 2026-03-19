@@ -4,11 +4,12 @@ import { obfuscate } from './prometheus-bundle.js';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
+import { PromcryptScreen } from './components/PromcryptScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
-type Page = 'home' | 'table' | 'about' | 'stats';
+type Page = 'home' | 'table' | 'about' | 'stats' | 'promcrypt';
 
 interface FileData {
   name: string;
@@ -16,11 +17,7 @@ interface FileData {
   ext: string;
 }
 
-const ASCII_HEADER = `╔═══════════════════════════════════╗
-║   PROMCRYPT TERMINAL v1.0         ║
-║   "Harness the fire of encryption"║
-║   Created by iamnotvision         ║
-╚═══════════════════════════════════╝`;
+const ASCII_HEADER = `꓄ꃅꍟ ꉣꃅꍏꈤ꓄ꂦꂵ ꌗꉣꀤꋪꀤ꓄`;
 
 function minifyLua(code: string): { minified: string, renamedCount: number } {
   const localRegex = /local\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
@@ -96,6 +93,20 @@ const analyzeFileContent = async (file: File): Promise<{ type: string, isText: b
     const slice = file.slice(0, 512);
     reader.readAsArrayBuffer(slice);
   });
+};
+
+export const AsciiSpinner = () => {
+  const [frame, setFrame] = useState(0);
+  const frames = ['|', '/', '-', '\\'];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((prev) => (prev + 1) % frames.length);
+    }, 100);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <span>{frames[frame]}</span>;
 };
 
 export default function App() {
@@ -256,10 +267,8 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       const configToUse = preset === 'Custom' ? customConfig : preset;
-      finalContent = obfuscate(file.content, configToUse);
+      finalContent = obfuscate(file.content, configToUse as any);
       finalContent = `return(function(...)local shadowdev1={"${finalContent.replace(/"/g, '\\"')}"}
--- Encryption text here
-With also shadowdev1 
 end)(...)`;
       finalName = file.name.replace(/\.(txt|lua)$/, `.${preset.toLowerCase()}.lua`);
       
@@ -319,14 +328,26 @@ end)(...)`;
 
   return (
     <div 
-      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''}`}
+      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''} ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
+      {/* Header Logo */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="flex justify-center mb-8 relative z-10"
+      >
+        <h1 className="text-[#00FF00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#00FF00,0_0_20px_#00FF00]">
+          {ASCII_HEADER}
+        </h1>
+      </motion.div>
+
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4 relative z-10">
-        {(['home', 'table', 'about', 'stats'] as Page[]).map(page => (
+        {(['home', 'table', 'about', 'stats', 'promcrypt'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -352,7 +373,11 @@ end)(...)`;
               <div className="border-2 border-[#00FF00] p-4 h-[400px] overflow-y-auto mb-6 bg-black shadow-[0_0_10px_#00FF0033] relative">
                 <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
                   {logs.join('\n')}
-                  <span className="animate-pulse">_</span>
+                  {isProcessing ? (
+                    <span className="ml-2 text-[#00FF00]"><AsciiSpinner /></span>
+                  ) : (
+                    <span className="animate-pulse">_</span>
+                  )}
                 </pre>
                 <div ref={logEndRef} />
               </div>
@@ -448,6 +473,7 @@ end)(...)`;
           {currentPage === 'table' && <TableScreen />}
           {currentPage === 'about' && <AboutScreen />}
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
+          {currentPage === 'promcrypt' && <PromcryptScreen onBack={() => setCurrentPage('home')} />}
         </motion.div>
       </AnimatePresence>
     </div>
