@@ -9,7 +9,7 @@ export default function TableScreen() {
       exit={{ opacity: 0, y: -20 }}
       className="mb-6 overflow-x-auto"
     >
-      <h2 className="text-xl font-bold mb-4 uppercase text-[#00FF00]">Presets</h2>
+      <h2 className="text-xl font-bold mb-4 uppercase text-[#FF8C00]">Presets</h2>
       <p className="mb-4 text-sm opacity-80">The following table provides an overview over the presets</p>
       <table className="w-full text-sm border-collapse border border-[#00FF00]">
         <thead>

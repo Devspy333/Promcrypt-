@@ -10,7 +10,7 @@ export default function AboutScreen() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="border-2 border-[#00FF00] p-6 mb-6 shadow-[0_0_10px_#00FF0033] max-h-[600px] overflow-y-auto"
+      className="border-2 border-[#FF8C00] p-6 mb-6 shadow-[0_0_10px_#00FF0033] max-h-[600px] overflow-y-auto"
     >
       <h2 className="text-2xl font-bold mb-4 uppercase text-[#00FF00]">About Promcrypt</h2>
       <p className="mb-4 text-sm leading-relaxed opacity-80">

@@ -33,7 +33,7 @@ export default function StatsScreen({ visitCount, uploadCount }: StatsScreenProp
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="border-2 border-[#00FF00] p-6 mb-6 shadow-[0_0_10px_#00FF0033]"
+      className="border-2 border-[#FF8C00] p-6 mb-6 shadow-[0_0_10px_#00FF0033]"
     >
       <h2 className="text-2xl font-bold mb-6 uppercase text-[#00FF00]">Live System Statistics</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

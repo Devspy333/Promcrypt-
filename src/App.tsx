@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { obfuscate } from './prometheus-bundle.js';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
 import WhatsNewScreen from './components/WhatsNewScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
+
+import { useHistory } from './hooks/useHistory';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
 type Page = 'home' | 'table' | 'about' | 'stats' | 'updates';
@@ -105,16 +106,19 @@ export default function App() {
   const [logs, setLogs] = useState<string[]>([ASCII_HEADER, '$> Ready.']);
   const [file, setFile] = useState<FileData | null>(null);
   const [preset, setPreset] = useState<Preset>('Minify');
-  const [customConfig, setCustomConfig] = useState<CustomPresetConfig>({
+  const [customConfig, setCustomConfig, { undo: undoConfig, redo: redoConfig, canUndo: canUndoConfig, canRedo: canRedoConfig }] = useHistory<CustomPresetConfig>({
     LuaVersion: 'Lua51',
     VarNamePrefix: '',
     NameGenerator: 'MangledShuffled',
     PrettyPrint: false,
     Seed: 0,
+    MinLength: 4,
+    MaxLength: 12,
     Steps: []
   });
-  const [result, setResult] = useState<string | null>(null);
-  const [resultFileName, setResultFileName] = useState<string | null>(null);
+  const [resultData, setResultData, { undo: undoResult, redo: redoResult, canUndo: canUndoResult, canRedo: canRedoResult }] = useHistory<{ content: string | null, fileName: string | null }>({ content: null, fileName: null });
+  const result = resultData.content;
+  const resultFileName = resultData.fileName;
   const [isProcessing, setIsProcessing] = useState(false);
   const [visitCount, setVisitCount] = useState(0);
   const [uploadCount, setUploadCount] = useState(0);
@@ -188,8 +192,7 @@ export default function App() {
           ext
         });
         setUploadCount(prev => prev + 1);
-        setResult(null);
-        setResultFileName(null);
+        setResultData({ content: null, fileName: null });
         addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
       } catch (err) {
         addLog(`$> Error: Failed to process file content.`);
@@ -259,15 +262,34 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       const configToUse = preset === 'Custom' ? customConfig : preset;
-      finalContent = obfuscate(file.content, configToUse as any);
+      
+      const worker = new Worker(new URL('./obfuscator.worker.ts', import.meta.url), { type: 'module' });
+      
+      const workerPromise = new Promise<string>((resolve, reject) => {
+        worker.onmessage = (e) => {
+          if (e.data.success) {
+            resolve(e.data.result);
+          } else {
+            reject(new Error(e.data.error));
+          }
+        };
+        worker.onerror = (err) => {
+          reject(new Error('Worker error: ' + err.message));
+        };
+      });
+
+      worker.postMessage({ code: file.content, config: configToUse });
+      
+      finalContent = await workerPromise;
+      worker.terminate();
+
       finalContent = `return(function(...)local shadowdev1={"${finalContent.replace(/"/g, '\\"')}"}
 end)(...)`;
       finalName = file.name.replace(/\.(txt|lua)$/, `.${preset.toLowerCase()}.lua`);
       
       addLog(`$> Obfuscation complete.`);
 
-      setResult(finalContent);
-      setResultFileName(finalName);
+      setResultData({ content: finalContent, fileName: finalName });
       
       const preview = finalContent.length > 100 ? finalContent.substring(0, 100) + '...' : finalContent;
       addLog(`$> Result (${finalContent.length} bytes):\n${preview}`);
@@ -302,8 +324,7 @@ end)(...)`;
     setLogs([ASCII_HEADER, '$> System reset.', '$> Ready.']);
     setFile(null);
     setPreset('Minify');
-    setResult(null);
-    setResultFileName(null);
+    setResultData({ content: null, fileName: null });
   };
 
   const copyToClipboard = () => {
@@ -320,11 +341,20 @@ end)(...)`;
 
   return (
     <div 
-      className={`min-h-screen bg-black text-[#00FF00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect ${isDragging ? 'border-4 border-dashed border-[#00FF00]' : ''} ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
+      className={`min-h-screen bg-black text-[#FF8C00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect relative ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-[#FF8C00]/20 backdrop-blur-sm border-4 border-dashed border-[#FF8C00] flex items-center justify-center rounded-2xl m-4 pointer-events-none">
+          <div className="text-center bg-black/80 p-12 rounded-xl border-2 border-[#FF8C00] shadow-[0_0_50px_#FF8C00]">
+            <div className="text-6xl mb-4 animate-bounce">📁</div>
+            <h2 className="text-4xl font-bold text-[#FF8C00] uppercase tracking-widest">Drop Lua File Here</h2>
+            <p className="mt-4 text-xl opacity-80">Release to upload and start obfuscation</p>
+          </div>
+        </div>
+      )}
       {/* Header Logo */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -332,13 +362,13 @@ end)(...)`;
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="flex mb-8 relative z-10 overflow-hidden w-full"
       >
-        <h1 className="text-[#00FF00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#00FF00,0_0_20px_#00FF00] animate-marquee whitespace-nowrap">
+        <h1 className="text-[#FF8C00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#FF8C00,0_0_20px_#FF8C00] animate-marquee whitespace-nowrap">
           {ASCII_HEADER}
         </h1>
       </motion.div>
 
       {/* Navigation */}
-      <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4 relative z-10">
+      <nav className="flex gap-4 mb-6 border-b border-[#FF8C00] pb-4 relative z-10">
         {(['home', 'table', 'about', 'stats', 'updates'] as Page[]).map(page => (
           <button
             key={page}
@@ -362,7 +392,7 @@ end)(...)`;
           {currentPage === 'home' && (
             <>
               {/* Log Pane */}
-              <div className="border-2 border-[#00FF00] p-4 h-[400px] overflow-y-auto mb-6 bg-black shadow-[0_0_10px_#00FF0033] relative">
+              <div className="border-2 border-[#FF8C00] p-4 h-[400px] overflow-y-auto mb-6 bg-black shadow-[0_0_10px_#FF8C0033] relative">
                 <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
                   {logs.join('\n')}
                   {isProcessing ? (
@@ -375,7 +405,7 @@ end)(...)`;
               </div>
 
               {/* Status Line */}
-              <div className="mb-6 flex justify-between items-center text-sm border-b border-[#00FF00] pb-2">
+              <div className="mb-6 flex justify-between items-center text-sm border-b border-[#FF8C00] pb-2">
                 <div>
                   <span className="opacity-70">FILE: </span>
                   <span className="font-bold">{file ? file.name : 'NONE'}</span>
@@ -417,7 +447,7 @@ end)(...)`;
                     <TerminalButton
                       key={p}
                       onClick={() => handlePresetChange(p)}
-                      className={preset === p ? 'bg-[#00FF00] text-black font-bold' : ''}
+                      className={preset === p ? 'bg-[#FF8C00] text-black font-bold' : ''}
                     >
                       {p}
                     </TerminalButton>
@@ -425,7 +455,13 @@ end)(...)`;
                 </div>
 
                 {preset === 'Custom' && (
-                  <CustomPresetPanel config={customConfig} onChange={setCustomConfig} />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2 justify-end">
+                      <TerminalButton onClick={undoConfig} disabled={!canUndoConfig} className="text-xs py-1 px-2">Undo</TerminalButton>
+                      <TerminalButton onClick={redoConfig} disabled={!canRedoConfig} className="text-xs py-1 px-2">Redo</TerminalButton>
+                    </div>
+                    <CustomPresetPanel config={customConfig} onChange={setCustomConfig} />
+                  </div>
                 )}
 
                 {/* Execution Actions */}
@@ -451,10 +487,27 @@ end)(...)`;
                   >
                     Copy Result
                   </TerminalButton>
+
+                  <div className="flex gap-2 ml-auto">
+                    <TerminalButton 
+                      onClick={undoResult}
+                      disabled={!canUndoResult}
+                      className="text-xs py-1 px-2"
+                    >
+                      Undo Result
+                    </TerminalButton>
+                    <TerminalButton 
+                      onClick={redoResult}
+                      disabled={!canRedoResult}
+                      className="text-xs py-1 px-2"
+                    >
+                      Redo Result
+                    </TerminalButton>
+                  </div>
                   
                   <TerminalButton 
                     onClick={handleReset}
-                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black ml-auto"
+                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black"
                   >
                     Reset
                   </TerminalButton>

@@ -3,9 +3,9 @@
 @layer base {
   body {
     background-color: #050505;
-    color: #00FF00;
+    color: #FF8C00;
     font-family: 'Courier New', Courier, monospace;
-    text-shadow: 0 0 5px #00FF00;
+    text-shadow: 0 0 5px #FF8C00;
     overflow: hidden;
     display: flex;
     justify-content: center;
@@ -29,7 +29,7 @@
       width: 95vw;
       height: 95vh;
       border-radius: 2rem;
-      box-shadow: 0 0 30px rgba(0, 255, 0, 0.1), inset 0 0 60px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 0 30px rgba(255, 140, 0, 0.1), inset 0 0 60px rgba(0, 0, 0, 0.9);
       border: 2px solid #1a1a1a;
     }
   }
@@ -43,7 +43,7 @@
     left: 0;
     bottom: 0;
     right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(255, 140, 0, 0.02), rgba(0, 0, 255, 0.06));
     z-index: 50;
     background-size: 100% 2px, 3px 100%;
     pointer-events: none;
@@ -77,14 +77,16 @@
   }
 
   @keyframes textShadow {
-    0% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
-    5% { text-shadow: 2px 0 1px rgba(0,30,255,0.5), -2px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
-    10% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
-    15% { text-shadow: 1.5px 0 1px rgba(0,30,255,0.5), -1.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
-    20% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
-    100% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #00FF00; }
+    0% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
+    5% { text-shadow: 2px 0 1px rgba(0,30,255,0.5), -2px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
+    10% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
+    15% { text-shadow: 1.5px 0 1px rgba(0,30,255,0.5), -1.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
+    20% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
+    100% { text-shadow: 0.5px 0 1px rgba(0,30,255,0.5), -0.5px 0 1px rgba(255,0,80,0.3), 0 0 3px #FF8C00; }
   }
+}
 
+@layer components {
   @keyframes marquee {
     0% { transform: translateX(100vw); }
     100% { transform: translateX(-100vw); }
@@ -104,7 +106,7 @@
   }
   
   .play-spinner circle {
-    stroke: #00FF00;
+    stroke: #FF8C00;
     stroke-width: 4;
     stroke-dasharray: 1, 200;
     stroke-dashoffset: 0;
@@ -127,14 +129,14 @@
     border-collapse: collapse;
     width: 100%;
     margin-bottom: 1rem;
-    border: 1px solid #00FF00;
+    border: 1px solid #FF8C00;
   }
   .markdown-body th, .markdown-body td {
-    border: 1px solid #00FF00;
+    border: 1px solid #FF8C00;
     padding: 0.5rem;
   }
   .markdown-body th {
-    background-color: #00FF00;
+    background-color: #FF8C00;
     color: #000;
     text-transform: uppercase;
   }
@@ -143,21 +145,21 @@
     margin-top: 1rem;
     margin-bottom: 0.5rem;
     text-transform: uppercase;
-    color: #00FF00;
-    text-shadow: 0 0 5px #00FF00;
+    color: #FF8C00;
+    text-shadow: 0 0 5px #FF8C00;
   }
   .markdown-body code {
-    background-color: #001100;
+    background-color: #110800;
     padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
-    color: #00FF00;
+    color: #FF8C00;
   }
   .markdown-body pre {
-    background-color: #001100;
+    background-color: #110800;
     padding: 1rem;
     border-radius: 0.5rem;
     overflow-x: auto;
     margin-bottom: 1rem;
-    border: 1px solid #00FF00;
+    border: 1px solid #FF8C00;
   }
 }

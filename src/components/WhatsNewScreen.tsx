@@ -48,7 +48,7 @@ export default function WhatsNewScreen() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="border-2 border-[#00FF00] p-6 mb-6 shadow-[0_0_10px_#00FF0033] h-[500px] overflow-y-auto"
+      className="border-2 border-[#FF8C00] p-6 mb-6 shadow-[0_0_10px_#00FF0033] h-[500px] overflow-y-auto"
     >
       <h2 className="text-2xl font-bold mb-6 uppercase text-[#00FF00] border-b border-[#00FF00] pb-2">What's New in Promcrypt</h2>
       
