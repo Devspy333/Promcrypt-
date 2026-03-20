@@ -4,13 +4,14 @@ import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
 import WhatsNewScreen from './components/WhatsNewScreen';
+import SettingsScreen from './components/SettingsScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 
 import { useHistory } from './hooks/useHistory';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
-type Page = 'home' | 'table' | 'about' | 'stats' | 'updates';
+type Page = 'home' | 'table' | 'about' | 'stats' | 'updates' | 'settings';
 
 interface FileData {
   name: string;
@@ -341,16 +342,16 @@ end)(...)`;
 
   return (
     <div 
-      className={`min-h-screen bg-black text-[#FF8C00] font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect relative ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
+      className={`min-h-screen bg-bg-base text-text-base font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect relative ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
       {isDragging && (
-        <div className="absolute inset-0 z-50 bg-[#FF8C00]/20 backdrop-blur-sm border-4 border-dashed border-[#FF8C00] flex items-center justify-center rounded-2xl m-4 pointer-events-none">
-          <div className="text-center bg-black/80 p-12 rounded-xl border-2 border-[#FF8C00] shadow-[0_0_50px_#FF8C00]">
+        <div className="absolute inset-0 z-50 bg-primary/20 backdrop-blur-sm border-4 border-dashed border-primary flex items-center justify-center rounded-2xl m-4 pointer-events-none">
+          <div className="text-center bg-bg-base/80 p-12 rounded-xl border-2 border-primary shadow-[0_0_50px_var(--theme-primary)]">
             <div className="text-6xl mb-4 animate-bounce">📁</div>
-            <h2 className="text-4xl font-bold text-[#FF8C00] uppercase tracking-widest">Drop Lua File Here</h2>
+            <h2 className="text-4xl font-bold text-primary uppercase tracking-widest">Drop Lua File Here</h2>
             <p className="mt-4 text-xl opacity-80">Release to upload and start obfuscation</p>
           </div>
         </div>
@@ -362,14 +363,14 @@ end)(...)`;
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="flex mb-8 relative z-10 overflow-hidden w-full"
       >
-        <h1 className="text-[#FF8C00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#FF8C00,0_0_20px_#FF8C00] animate-marquee whitespace-nowrap">
+        <h1 className="text-primary font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_var(--theme-primary),0_0_20px_var(--theme-primary)] animate-marquee whitespace-nowrap">
           {ASCII_HEADER}
         </h1>
       </motion.div>
 
       {/* Navigation */}
-      <nav className="flex gap-4 mb-6 border-b border-[#FF8C00] pb-4 relative z-10">
-        {(['home', 'table', 'about', 'stats', 'updates'] as Page[]).map(page => (
+      <nav className="flex gap-4 mb-6 border-b border-primary pb-4 relative z-10 overflow-x-auto whitespace-nowrap">
+        {(['home', 'table', 'about', 'stats', 'updates', 'settings'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -392,7 +393,7 @@ end)(...)`;
           {currentPage === 'home' && (
             <>
               {/* Log Pane */}
-              <div className="border-2 border-[#FF8C00] p-4 h-[400px] overflow-y-auto mb-6 bg-black shadow-[0_0_10px_#FF8C0033] relative">
+              <div className="border-2 border-primary p-4 h-[400px] overflow-y-auto mb-6 bg-bg-base shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] relative">
                 <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
                   {logs.join('\n')}
                   {isProcessing ? (
@@ -405,7 +406,7 @@ end)(...)`;
               </div>
 
               {/* Status Line */}
-              <div className="mb-6 flex justify-between items-center text-sm border-b border-[#FF8C00] pb-2">
+              <div className="mb-6 flex justify-between items-center text-sm border-b border-primary pb-2">
                 <div>
                   <span className="opacity-70">FILE: </span>
                   <span className="font-bold">{file ? file.name : 'NONE'}</span>
@@ -447,7 +448,7 @@ end)(...)`;
                     <TerminalButton
                       key={p}
                       onClick={() => handlePresetChange(p)}
-                      className={preset === p ? 'bg-[#FF8C00] text-black font-bold' : ''}
+                      className={preset === p ? 'bg-primary text-bg-base font-bold' : ''}
                     >
                       {p}
                     </TerminalButton>
@@ -507,7 +508,7 @@ end)(...)`;
                   
                   <TerminalButton 
                     onClick={handleReset}
-                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black"
+                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-bg-base"
                   >
                     Reset
                   </TerminalButton>
@@ -519,6 +520,7 @@ end)(...)`;
           {currentPage === 'about' && <AboutScreen />}
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
           {currentPage === 'updates' && <WhatsNewScreen />}
+          {currentPage === 'settings' && <SettingsScreen />}
         </motion.div>
       </AnimatePresence>
     </div>

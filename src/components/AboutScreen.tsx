@@ -10,9 +10,9 @@ export default function AboutScreen() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="border-2 border-[#FF8C00] p-6 mb-6 shadow-[0_0_10px_#00FF0033] max-h-[600px] overflow-y-auto"
+      className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] max-h-[600px] overflow-y-auto"
     >
-      <h2 className="text-2xl font-bold mb-4 uppercase text-[#00FF00]">About Promcrypt</h2>
+      <h2 className="text-2xl font-bold mb-4 uppercase text-primary">About Promcrypt</h2>
       <p className="mb-4 text-sm leading-relaxed opacity-80">
         Promcrypt is a powerful obfuscation suite designed for Lua scripts and text files. 
         It leverages the Prometheus Obfuscator engine to provide multiple layers of protection, 
@@ -23,7 +23,7 @@ export default function AboutScreen() {
         Promcrypt has a preset to match your security requirements.
       </p>
       <p className="mb-6 text-sm leading-relaxed opacity-80">
-        Join our Discord server: <a href="https://discord.gg/z5GwQ2fhYJ" target="_blank" rel="noopener noreferrer" className="text-[#00FF00] underline">https://discord.gg/z5GwQ2fhYJ</a>
+        Join our Discord server: <a href="https://discord.gg/z5GwQ2fhYJ" target="_blank" rel="noopener noreferrer" className="text-primary underline">https://discord.gg/z5GwQ2fhYJ</a>
       </p>
       
       <div className="markdown-body text-sm opacity-80">
