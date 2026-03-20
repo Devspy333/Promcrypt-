@@ -4,11 +4,12 @@ import { obfuscate } from './prometheus-bundle.js';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
+import WhatsNewScreen from './components/WhatsNewScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
-type Page = 'home' | 'table' | 'about' | 'stats';
+type Page = 'home' | 'table' | 'about' | 'stats' | 'updates';
 
 interface FileData {
   name: string;
@@ -94,19 +95,11 @@ const analyzeFileContent = async (file: File): Promise<{ type: string, isText: b
   });
 };
 
-export const AsciiSpinner = () => {
-  const [frame, setFrame] = useState(0);
-  const frames = ['|', '/', '-', '\\'];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFrame((prev) => (prev + 1) % frames.length);
-    }, 100);
-    return () => clearInterval(timer);
-  }, []);
-
-  return <span>{frames[frame]}</span>;
-};
+export const PlayStoreSpinner = () => (
+  <svg className="play-spinner inline-block ml-2 align-middle" viewBox="25 25 50 50">
+    <circle cx="50" cy="50" r="20"></circle>
+  </svg>
+);
 
 export default function App() {
   const [logs, setLogs] = useState<string[]>([ASCII_HEADER, '$> Ready.']);
@@ -346,7 +339,7 @@ end)(...)`;
 
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4 relative z-10">
-        {(['home', 'table', 'about', 'stats'] as Page[]).map(page => (
+        {(['home', 'table', 'about', 'stats', 'updates'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -373,7 +366,7 @@ end)(...)`;
                 <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
                   {logs.join('\n')}
                   {isProcessing ? (
-                    <span className="ml-2 text-[#00FF00]"><AsciiSpinner /></span>
+                    <PlayStoreSpinner />
                   ) : (
                     <span className="animate-pulse">_</span>
                   )}
@@ -472,6 +465,7 @@ end)(...)`;
           {currentPage === 'table' && <TableScreen />}
           {currentPage === 'about' && <AboutScreen />}
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
+          {currentPage === 'updates' && <WhatsNewScreen />}
         </motion.div>
       </AnimatePresence>
     </div>
