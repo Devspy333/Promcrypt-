@@ -337,9 +337,9 @@ end)(...)`;
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="flex justify-center mb-8 relative z-10"
+        className="flex mb-8 relative z-10 overflow-hidden w-full"
       >
-        <h1 className="text-[#00FF00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#00FF00,0_0_20px_#00FF00]">
+        <h1 className="text-[#00FF00] font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_#00FF00,0_0_20px_#00FF00] animate-marquee whitespace-nowrap">
           {ASCII_HEADER}
         </h1>
       </motion.div>
