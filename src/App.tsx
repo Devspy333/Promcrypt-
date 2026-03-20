@@ -4,12 +4,11 @@ import { obfuscate } from './prometheus-bundle.js';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
-import { PromcryptScreen } from './components/PromcryptScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
-type Page = 'home' | 'table' | 'about' | 'stats' | 'promcrypt';
+type Page = 'home' | 'table' | 'about' | 'stats';
 
 interface FileData {
   name: string;
@@ -347,7 +346,7 @@ end)(...)`;
 
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-[#00FF00] pb-4 relative z-10">
-        {(['home', 'table', 'about', 'stats', 'promcrypt'] as Page[]).map(page => (
+        {(['home', 'table', 'about', 'stats'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -473,7 +472,6 @@ end)(...)`;
           {currentPage === 'table' && <TableScreen />}
           {currentPage === 'about' && <AboutScreen />}
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
-          {currentPage === 'promcrypt' && <PromcryptScreen onBack={() => setCurrentPage('home')} />}
         </motion.div>
       </AnimatePresence>
     </div>
