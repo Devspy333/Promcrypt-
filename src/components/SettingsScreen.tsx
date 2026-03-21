@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme, COLOR_MAP, ThemeColor, ThemeMode } from '../contexts/ThemeContext';
 import TerminalButton from './TerminalButton';
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ isMusicPlaying, setMusicState }: { isMusicPlaying: boolean, setMusicState: (state: boolean) => void }) {
   const { color, mode, setColor, setMode } = useTheme();
 
   const colors: ThemeColor[] = ['orange', 'green', 'blue', 'red', 'purple', 'cyan', 'yellow', 'pink'];
@@ -48,6 +48,29 @@ export default function SettingsScreen() {
             </TerminalButton>
           ))}
         </div>
+      </div>
+
+      <div className="mb-8">
+        <h3 className="text-xl font-bold mb-4 uppercase">Background Music</h3>
+        <div className="flex flex-wrap gap-4">
+          <TerminalButton
+            onClick={() => setMusicState(true)}
+            className={isMusicPlaying ? 'bg-primary text-bg-base font-bold' : ''}
+          >
+            ON
+          </TerminalButton>
+          <TerminalButton
+            onClick={() => setMusicState(false)}
+            className={!isMusicPlaying ? 'bg-primary text-bg-base font-bold' : ''}
+          >
+            OFF
+          </TerminalButton>
+        </div>
+      </div>
+
+      <div className="mb-8 p-4 border border-dashed border-primary/50 bg-primary/5 rounded-lg">
+        <h3 className="text-lg font-bold mb-2 uppercase text-primary/80">More Coming Soon...</h3>
+        <p className="text-sm opacity-70">We are working on adding more customization options and advanced settings. Stay tuned for future updates!</p>
       </div>
       
       <div className="mt-8 pt-4 border-t border-primary/30 text-sm opacity-70">

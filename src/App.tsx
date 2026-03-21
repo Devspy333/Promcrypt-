@@ -8,6 +8,7 @@ import WhatsNewScreen from './components/WhatsNewScreen';
 import SettingsScreen from './components/SettingsScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
+import Logo from './components/Logo';
 
 import { useHistory } from './hooks/useHistory';
 
@@ -20,7 +21,7 @@ interface FileData {
   ext: string;
 }
 
-const ASCII_HEADER = `꓄ꃅꍟ ꉣꃅꍏꈤ꓄ꂦꂵ ꌗꉣꀤꋪꀤ꓄`;
+const ASCII_HEADER = `PROMCRYPT TERMINAL`;
 
 function minifyLua(code: string): { minified: string, renamedCount: number } {
   const localRegex = /local\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
@@ -128,49 +129,65 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Track visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Handle audio play/pause based on state
+  useEffect(() => {
+    if (!audioRef.current || audioError) return;
+
+    if (isMusicPlaying && isPageVisible) {
+      audioRef.current.play().catch(err => {
+        console.log("Play prevented:", err);
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isMusicPlaying, isPageVisible, audioError]);
+
+  // Autoplay on first interaction
   useEffect(() => {
     const handleInteraction = () => {
-      if (audioRef.current && !isMusicPlaying && !audioError) {
-        audioRef.current.play().then(() => {
-          setIsMusicPlaying(true);
-        }).catch(err => {
-          console.log("Autoplay prevented or file missing:", err);
-        });
+      if (!hasAutoPlayed && !audioError) {
+        setHasAutoPlayed(true);
+        setIsMusicPlaying(true);
       }
     };
 
-    document.addEventListener('click', handleInteraction, { once: true });
-    document.addEventListener('keydown', handleInteraction, { once: true });
+    if (!hasAutoPlayed) {
+      document.addEventListener('click', handleInteraction, { once: true });
+      document.addEventListener('keydown', handleInteraction, { once: true });
+    }
 
     return () => {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('keydown', handleInteraction);
     };
-  }, [isMusicPlaying, audioError]);
+  }, [hasAutoPlayed, audioError]);
 
-  const toggleMusic = () => {
-    if (audioError) {
+  const setMusicState = (state: boolean) => {
+    if (audioError && state) {
       addLog("$> ERROR: Music file not found. Please upload 'music.mp3' to the public folder.");
       return;
     }
-    if (audioRef.current) {
-      if (isMusicPlaying) {
-        audioRef.current.pause();
-        setIsMusicPlaying(false);
-      } else {
-        audioRef.current.play().then(() => {
-          setIsMusicPlaying(true);
-        }).catch(err => {
-          console.log("Play prevented:", err);
-        });
-      }
-    }
+    setHasAutoPlayed(true);
+    setIsMusicPlaying(state);
   };
+
+  const toggleMusic = () => setMusicState(!isMusicPlaying);
 
   useEffect(() => {
     setVisitCount(prev => prev + 1);
@@ -405,8 +422,11 @@ end)(...)`;
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="overflow-hidden"
+          className="overflow-hidden flex items-center gap-4"
         >
+          <div className="w-16 h-16 sm:w-20 sm:h-20 text-primary drop-shadow-[0_0_10px_var(--theme-primary)]">
+            <Logo />
+          </div>
           <h1 className="text-primary font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_var(--theme-primary),0_0_20px_var(--theme-primary)] animate-marquee whitespace-nowrap">
             {ASCII_HEADER}
           </h1>
@@ -583,7 +603,7 @@ end)(...)`;
           {currentPage === 'about' && <AboutScreen />}
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
           {currentPage === 'updates' && <WhatsNewScreen />}
-          {currentPage === 'settings' && <SettingsScreen />}
+          {currentPage === 'settings' && <SettingsScreen isMusicPlaying={isMusicPlaying} setMusicState={setMusicState} />}
         </motion.div>
       </AnimatePresence>
     </div>

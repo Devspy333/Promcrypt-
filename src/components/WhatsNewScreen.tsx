@@ -4,6 +4,17 @@ import { motion } from 'motion/react';
 export default function WhatsNewScreen() {
   const updates = [
     {
+      version: "v2.3.0",
+      date: "2026-03-21",
+      title: "Promcrypt Updates & Settings",
+      details: [
+        "Added new background music with automatic pause/play on tab switch.",
+        "Added 'More coming soon' section in Settings.",
+        "Added On/Off toggle for background music in Settings.",
+        "Enhanced Promcrypt decryption algorithms for better performance."
+      ]
+    },
+    {
       version: "v2.2.0",
       date: "2026-03-20",
       title: "Theming & Settings",
