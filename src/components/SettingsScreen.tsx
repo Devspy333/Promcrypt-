@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { useTheme, COLOR_MAP, ThemeColor, ThemeMode } from '../contexts/ThemeContext';
 import TerminalButton from './TerminalButton';
 
@@ -9,7 +10,13 @@ export default function SettingsScreen({ isMusicPlaying, setMusicState }: { isMu
   const modes: ThemeMode[] = ['dark', 'light', 'system'];
 
   return (
-    <div className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] max-h-[600px] overflow-y-auto bg-bg-base">
+    <motion.div 
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] max-h-[600px] overflow-y-auto bg-bg-base"
+    >
       <h2 className="text-2xl font-bold mb-6 uppercase text-primary border-b border-primary pb-2">Settings</h2>
       
       <div className="mb-8">
@@ -76,6 +83,6 @@ export default function SettingsScreen({ isMusicPlaying, setMusicState }: { isMu
       <div className="mt-8 pt-4 border-t border-primary/30 text-sm opacity-70">
         <p>Settings are automatically saved to your browser's local storage.</p>
       </div>
-    </div>
+    </motion.div>
   );
 }

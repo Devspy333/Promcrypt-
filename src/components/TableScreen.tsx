@@ -4,9 +4,10 @@ import { motion } from 'motion/react';
 export default function TableScreen() {
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
       className="mb-6 overflow-x-auto"
     >
       <h2 className="text-xl font-bold mb-4 uppercase text-primary">Presets</h2>

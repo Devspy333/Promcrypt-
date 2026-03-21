@@ -1,19 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
 import WhatsNewScreen from './components/WhatsNewScreen';
 import SettingsScreen from './components/SettingsScreen';
+import AccountScreen from './components/AccountScreen';
 import TerminalButton from './components/TerminalButton';
 import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
 import Logo from './components/Logo';
+import musicFile from './assets/music.mp3';
 
 import { useHistory } from './hooks/useHistory';
 
 type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
-type Page = 'home' | 'table' | 'about' | 'stats' | 'updates' | 'settings';
+type Page = 'home' | 'table' | 'about' | 'stats' | 'updates' | 'settings' | 'account';
 
 interface FileData {
   name: string;
@@ -125,11 +127,13 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [visitCount, setVisitCount] = useState(0);
   const [uploadCount, setUploadCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [currentPage, setCurrentPage] = useState<Page>('account');
   const [isDragging, setIsDragging] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(!document.hidden);
+  const [showPreview, setShowPreview] = useState(false);
   const hasAutoPlayed = useRef(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -189,7 +193,7 @@ export default function App() {
 
   const setMusicState = (state: boolean) => {
     if (audioError && state) {
-      addLog("$> ERROR: Music file not found. Please upload 'music.mp3' to the public folder.");
+      addLog("$> ERROR: Music file failed to load. Please check your connection or browser settings.");
       return;
     }
     hasAutoPlayed.current = true;
@@ -261,6 +265,7 @@ export default function App() {
           content,
           ext
         });
+        setShowPreview(true);
         setUploadCount(prev => prev + 1);
         setResultData({ content: null, fileName: null });
         addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
@@ -321,6 +326,7 @@ export default function App() {
     }
 
     setIsProcessing(true);
+    setShowPreview(false);
     addLog(`$> [${preset}] applied to ${file.name}`);
     
     try {
@@ -393,6 +399,7 @@ end)(...)`;
   const handleReset = () => {
     setLogs([ASCII_HEADER, '$> System reset.', '$> Ready.']);
     setFile(null);
+    setShowPreview(false);
     setPreset('Minify');
     setResultData({ content: null, fileName: null });
   };
@@ -428,8 +435,8 @@ end)(...)`;
       {/* Header Logo */}
       <div className="flex justify-between items-start mb-8 relative z-10 w-full">
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="overflow-hidden flex items-center gap-4"
         >
@@ -444,25 +451,37 @@ end)(...)`;
           onClick={toggleMusic}
           className={`p-2 border rounded-full transition-colors ${audioError ? 'text-red-500 border-red-500/50 hover:bg-red-500/10' : 'text-primary hover:text-white border-primary shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)]'}`}
           title={audioError ? "Music file missing" : (isMusicPlaying ? "Mute Music" : "Play Music")}
+          disabled={isAudioLoading}
         >
-          {isMusicPlaying && !audioError ? <Volume2 size={24} /> : <VolumeX size={24} />}
+          {isAudioLoading ? (
+            <Loader2 size={24} className="animate-spin" />
+          ) : isMusicPlaying && !audioError ? (
+            <Volume2 size={24} />
+          ) : (
+            <VolumeX size={24} />
+          )}
         </button>
       </div>
 
       <audio 
         ref={audioRef} 
-        src="/music.mp3" 
+        src={musicFile} 
         loop 
+        onLoadStart={() => setIsAudioLoading(true)}
+        onCanPlay={() => setIsAudioLoading(false)}
+        onWaiting={() => setIsAudioLoading(true)}
+        onPlaying={() => setIsAudioLoading(false)}
         onError={(e) => {
           console.error("Audio file failed to load:", e);
           setAudioError(true);
+          setIsAudioLoading(false);
           setIsMusicPlaying(false);
         }}
       />
 
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-primary pb-4 relative z-10 overflow-x-auto whitespace-nowrap">
-        {(['home', 'table', 'about', 'stats', 'updates', 'settings'] as Page[]).map(page => (
+        {(['home', 'account', 'table', 'about', 'stats', 'updates', 'settings'] as Page[]).map(page => (
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
@@ -476,25 +495,43 @@ end)(...)`;
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           className="relative z-10"
         >
           {currentPage === 'home' && (
             <>
               {/* Log Pane */}
-              <div className="border-2 border-primary p-4 h-[400px] overflow-y-auto mb-6 bg-bg-base shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] relative">
-                <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
-                  {logs.join('\n')}
-                  {isProcessing ? (
-                    <PlayStoreSpinner />
-                  ) : (
-                    <span className="animate-pulse">_</span>
-                  )}
-                </pre>
-                <div ref={logEndRef} />
+              <div className="border-2 border-primary p-4 h-[400px] mb-6 bg-bg-base shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] relative flex flex-col">
+                <div className="flex-1 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap break-all text-sm md:text-base leading-relaxed">
+                    {logs.join('\n')}
+                    {isProcessing ? (
+                      <PlayStoreSpinner />
+                    ) : (
+                      <span className="animate-pulse">_</span>
+                    )}
+                  </pre>
+                  <div ref={logEndRef} />
+                </div>
+                {file && showPreview && !isProcessing && (
+                  <div className="mt-4 border-t border-primary pt-4 flex-shrink-0">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold opacity-70 text-sm">PREVIEW: {file.name}</span>
+                      <button 
+                        onClick={() => setShowPreview(false)} 
+                        className="text-xs border border-primary px-2 py-1 hover:bg-primary hover:text-bg-base transition-colors"
+                      >
+                        CLEAR PREVIEW
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap break-all text-xs opacity-80 h-[100px] overflow-y-auto border border-primary/30 p-2 bg-primary/5">
+                      {file.content}
+                    </pre>
+                  </div>
+                )}
               </div>
 
               {/* Status Line */}
@@ -613,6 +650,7 @@ end)(...)`;
           {currentPage === 'stats' && <StatsScreen visitCount={visitCount} uploadCount={uploadCount} />}
           {currentPage === 'updates' && <WhatsNewScreen />}
           {currentPage === 'settings' && <SettingsScreen isMusicPlaying={isMusicPlaying} setMusicState={setMusicState} />}
+          {currentPage === 'account' && <AccountScreen />}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -7,9 +7,10 @@ import { PROMCRYPT_DOCS } from '../constants';
 export default function AboutScreen() {
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
       className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] max-h-[600px] overflow-y-auto"
     >
       <h2 className="text-2xl font-bold mb-4 uppercase text-primary">About Promcrypt</h2>

@@ -4,6 +4,17 @@ import { motion } from 'motion/react';
 export default function WhatsNewScreen() {
   const updates = [
     {
+      version: "v2.4.0",
+      date: "2026-03-21",
+      title: "Promcrypt New Updates",
+      details: [
+        "Added Discord OAuth Login for secure user authentication.",
+        "Introduced Secure Local Storage for encrypting and saving files locally.",
+        "Overhauled UI animations with new blur and slide transitions.",
+        "Added visual audio loading indicators for background music."
+      ]
+    },
+    {
       version: "v2.3.0",
       date: "2026-03-21",
       title: "Promcrypt Updates & Settings",
@@ -67,9 +78,10 @@ export default function WhatsNewScreen() {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
       className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] h-[500px] overflow-y-auto"
     >
       <h2 className="text-2xl font-bold mb-6 uppercase text-primary border-b border-primary pb-2">What's New in Promcrypt</h2>
@@ -78,9 +90,9 @@ export default function WhatsNewScreen() {
         {updates.map((update, i) => (
           <motion.div 
             key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
+            initial={{ opacity: 0, x: -20, filter: 'blur(5px)' }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            transition={{ delay: i * 0.1, duration: 0.4, ease: 'easeOut' }}
             className="border-l-2 border-primary pl-4"
           >
             <div className="flex items-baseline gap-3 mb-1">
