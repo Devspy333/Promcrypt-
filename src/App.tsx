@@ -129,8 +129,8 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
-  const [isPageVisible, setIsPageVisible] = useState(true);
-  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(!document.hidden);
+  const hasAutoPlayed = useRef(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -150,9 +150,13 @@ export default function App() {
     if (!audioRef.current || audioError) return;
 
     if (isMusicPlaying && isPageVisible) {
-      audioRef.current.play().catch(err => {
-        console.log("Play prevented:", err);
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.log("Play prevented:", err);
+          setIsMusicPlaying(false);
+        });
+      }
     } else {
       audioRef.current.pause();
     }
@@ -160,30 +164,35 @@ export default function App() {
 
   // Autoplay on first interaction
   useEffect(() => {
-    const handleInteraction = () => {
-      if (!hasAutoPlayed && !audioError) {
-        setHasAutoPlayed(true);
-        setIsMusicPlaying(true);
+    const handleInteraction = (e: Event) => {
+      if (hasAutoPlayed.current || audioError) return;
+      
+      // If the user clicked a button, let the button's onClick handle the state
+      const target = e.target as HTMLElement;
+      if (target.closest('button')) {
+        hasAutoPlayed.current = true;
+        return;
       }
+
+      hasAutoPlayed.current = true;
+      setIsMusicPlaying(true);
     };
 
-    if (!hasAutoPlayed) {
-      document.addEventListener('click', handleInteraction, { once: true });
-      document.addEventListener('keydown', handleInteraction, { once: true });
-    }
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
 
     return () => {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('keydown', handleInteraction);
     };
-  }, [hasAutoPlayed, audioError]);
+  }, [audioError]);
 
   const setMusicState = (state: boolean) => {
     if (audioError && state) {
       addLog("$> ERROR: Music file not found. Please upload 'music.mp3' to the public folder.");
       return;
     }
-    setHasAutoPlayed(true);
+    hasAutoPlayed.current = true;
     setIsMusicPlaying(state);
   };
 
