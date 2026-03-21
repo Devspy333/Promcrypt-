@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Volume2, VolumeX } from 'lucide-react';
 import TableScreen from './components/TableScreen';
 import AboutScreen from './components/AboutScreen';
 import StatsScreen from './components/StatsScreen';
@@ -125,9 +126,51 @@ export default function App() {
   const [uploadCount, setUploadCount] = useState(0);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isDragging, setIsDragging] = useState(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (audioRef.current && !isMusicPlaying && !audioError) {
+        audioRef.current.play().then(() => {
+          setIsMusicPlaying(true);
+        }).catch(err => {
+          console.log("Autoplay prevented or file missing:", err);
+        });
+      }
+    };
+
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('keydown', handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+  }, [isMusicPlaying, audioError]);
+
+  const toggleMusic = () => {
+    if (audioError) {
+      addLog("$> ERROR: Music file not found. Please upload 'music.mp3' to the public folder.");
+      return;
+    }
+    if (audioRef.current) {
+      if (isMusicPlaying) {
+        audioRef.current.pause();
+        setIsMusicPlaying(false);
+      } else {
+        audioRef.current.play().then(() => {
+          setIsMusicPlaying(true);
+        }).catch(err => {
+          console.log("Play prevented:", err);
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     setVisitCount(prev => prev + 1);
@@ -357,16 +400,36 @@ end)(...)`;
         </div>
       )}
       {/* Header Logo */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="flex mb-8 relative z-10 overflow-hidden w-full"
-      >
-        <h1 className="text-primary font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_var(--theme-primary),0_0_20px_var(--theme-primary)] animate-marquee whitespace-nowrap">
-          {ASCII_HEADER}
-        </h1>
-      </motion.div>
+      <div className="flex justify-between items-start mb-8 relative z-10 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
+          <h1 className="text-primary font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_var(--theme-primary),0_0_20px_var(--theme-primary)] animate-marquee whitespace-nowrap">
+            {ASCII_HEADER}
+          </h1>
+        </motion.div>
+        <button 
+          onClick={toggleMusic}
+          className={`p-2 border rounded-full transition-colors ${audioError ? 'text-red-500 border-red-500/50 hover:bg-red-500/10' : 'text-primary hover:text-white border-primary shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)]'}`}
+          title={audioError ? "Music file missing" : (isMusicPlaying ? "Mute Music" : "Play Music")}
+        >
+          {isMusicPlaying && !audioError ? <Volume2 size={24} /> : <VolumeX size={24} />}
+        </button>
+      </div>
+
+      <audio 
+        ref={audioRef} 
+        src="/music.mp3" 
+        loop 
+        onError={(e) => {
+          console.error("Audio file failed to load:", e);
+          setAudioError(true);
+          setIsMusicPlaying(false);
+        }}
+      />
 
       {/* Navigation */}
       <nav className="flex gap-4 mb-6 border-b border-primary pb-4 relative z-10 overflow-x-auto whitespace-nowrap">
