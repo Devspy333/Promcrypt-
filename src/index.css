@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--theme-primary);
+  --color-bg-base: var(--theme-bg);
+  --color-panel: var(--theme-panel);
+  --color-text-base: var(--theme-text);
+}
+
+@layer base {
+  :root {
+    --theme-primary: #FF8C00;
+    --theme-bg: #050505;
+    --theme-panel: rgba(255, 140, 0, 0.1);
+    --theme-text: #FF8C00;
+  }
+
+  body {
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    position: relative;
+  }
+
+  #root {
+    width: 100vw;
+    height: 100vh;
+    overflow-y: auto;
+    background-color: transparent;
+    position: relative;
+  }
+  
+  /* Screen wrapper effect */
+  @media (min-width: 768px) {
+    #root {
+      width: 95vw;
+      height: 95vh;
+      border-radius: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--theme-primary);
+    border-radius: 4px;
+    opacity: 0.5;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-primary);
+    filter: brightness(1.2);
+  }
+}
+
+@layer components {
+  @keyframes marquee {
+    0% { transform: translateX(100vw); }
+    100% { transform: translateX(-100vw); }
+  }
+
+  .animate-marquee {
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 15s linear infinite;
+  }
+
+  .play-spinner {
+    animation: rotate 2s linear infinite;
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+  }
+  
+  .play-spinner circle {
+    stroke: var(--theme-primary);
+    stroke-width: 4;
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+    animation: dash 1.5s ease-in-out infinite;
+    stroke-linecap: round;
+    fill: none;
+  }
+
+  @keyframes rotate {
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes dash {
+    0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+    50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+    100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+  }
+
+  .markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+    border: 1px solid color-mix(in srgb, var(--theme-primary) 30%, transparent);
+  }
+  .markdown-body th, .markdown-body td {
+    border: 1px solid color-mix(in srgb, var(--theme-primary) 30%, transparent);
+    padding: 0.5rem;
+  }
+  .markdown-body th {
+    background-color: color-mix(in srgb, var(--theme-primary) 20%, transparent);
+    color: var(--theme-text);
+    text-transform: uppercase;
+  }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    font-weight: bold;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--theme-primary);
+  }
+  .markdown-body code {
+    background-color: var(--theme-panel);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--theme-text);
+  }
+  /* CRT Effects */
+  .crt-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    /* Subtle curvature effect */
+    transform: perspective(1000px) rotateX(0.5deg);
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+  }
+
+  .crt-overlay {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+    z-index: 20;
+    background-size: 100% 3px, 3px 100%;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .crt-scanline {
+    width: 100%;
+    height: 100px;
+    z-index: 21;
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 100%);
+    opacity: 0.1;
+    position: absolute;
+    bottom: 100%;
+    animation: scanline-move 8s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scanline-move {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(500px); }
+  }
+}

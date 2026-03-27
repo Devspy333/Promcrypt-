@@ -1,0 +1,134 @@
+import React from 'react';
+import { motion } from 'motion/react';
+
+export default function WhatsNewScreen() {
+  const updates = [
+    {
+      version: "v2.6.0",
+      date: "2026-03-24",
+      title: "Retro CRT & Help Center",
+      details: [
+        "Added authentic CRT scanline and curvature effects to the terminal interface.",
+        "Overhauled the 'About / Help' section with detailed usage instructions and troubleshooting tips.",
+        "Streamlined navigation by removing the redundant Stats section.",
+        "Improved technical documentation accessibility and overall UI clarity."
+      ]
+    },
+    {
+      version: "v2.5.0",
+      date: "2026-03-24",
+      title: "Promcrypt Galaxy Theme & Optimization",
+      details: [
+        "Introduced a lively, moving Galaxy Theme with animated stars and nebulas.",
+        "Removed background music and audio controls to improve performance and reduce distractions.",
+        "Optimized default theme colors for a deep space aesthetic."
+      ]
+    },
+    {
+      version: "v2.4.0",
+      date: "2026-03-21",
+      title: "Promcrypt New Updates",
+      details: [
+        "Added Google OAuth Login for secure user authentication.",
+        "Introduced Secure Local Storage for encrypting and saving files locally.",
+        "Overhauled UI animations with new blur and slide transitions.",
+        "Added visual audio loading indicators for background music."
+      ]
+    },
+    {
+      version: "v2.3.0",
+      date: "2026-03-21",
+      title: "Promcrypt Updates & Settings",
+      details: [
+        "Added new background music with automatic pause/play on tab switch.",
+        "Added 'More coming soon' section in Settings.",
+        "Added On/Off toggle for background music in Settings.",
+        "Enhanced Promcrypt decryption algorithms for better performance."
+      ]
+    },
+    {
+      version: "v2.2.0",
+      date: "2026-03-20",
+      title: "Theming & Settings",
+      details: [
+        "Added new Settings panel for UI customization.",
+        "Introduced 8 new primary theme colors (Orange, Green, Blue, Red, Purple, Cyan, Yellow, Pink).",
+        "Added Light, Dark, and System display modes.",
+        "Persistent storage for user preferences."
+      ]
+    },
+    {
+      version: "v2.1.0",
+      date: "2026-03-20",
+      title: "Promcrypt Backend Removal",
+      details: [
+        "Transitioned back to client-side SPA.",
+        "Removed CyCraft Prometheus Decryptor integration.",
+        "Optimized bundle size and improved performance."
+      ]
+    },
+    {
+      version: "v2.0.0",
+      date: "2026-03-19",
+      title: "Promcrypt Integration",
+      details: [
+        "Added advanced Promcrypt ransomware decryption.",
+        "Integrated AES, Base64, Hex, and Classic Ciphers.",
+        "Added CyCraft Prometheus Decryptor binary support."
+      ]
+    },
+    {
+      version: "v1.5.0",
+      date: "2026-02-15",
+      title: "Custom Presets",
+      details: [
+        "Added Custom Preset Panel.",
+        "Users can now configure specific obfuscation parameters."
+      ]
+    },
+    {
+      version: "v1.0.0",
+      date: "2026-01-01",
+      title: "Initial Release",
+      details: [
+        "Basic Lua minification and obfuscation.",
+        "Retro CRT terminal interface."
+      ]
+    }
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="border-2 border-primary p-6 mb-6 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] h-[500px] overflow-y-auto"
+    >
+      <h2 className="text-2xl font-bold mb-6 uppercase text-primary border-b border-primary pb-2">What's New in Promcrypt</h2>
+      
+      <div className="space-y-8">
+        {updates.map((update, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, x: -20, filter: 'blur(5px)' }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            transition={{ delay: i * 0.1, duration: 0.4, ease: 'easeOut' }}
+            className="border-l-2 border-primary pl-4"
+          >
+            <div className="flex items-baseline gap-3 mb-1">
+              <h3 className="text-xl font-bold text-white">{update.version}</h3>
+              <span className="text-sm opacity-70">{update.date}</span>
+            </div>
+            <h4 className="text-lg text-primary mb-2">{update.title}</h4>
+            <ul className="list-disc pl-5 space-y-1 opacity-90">
+              {update.details.map((detail, j) => (
+                <li key={j}>{detail}</li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}

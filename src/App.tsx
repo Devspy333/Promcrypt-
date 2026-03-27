@@ -1,0 +1,611 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Volume2, VolumeX } from 'lucide-react';
+import AboutScreen from './components/AboutScreen';
+import WhatsNewScreen from './components/WhatsNewScreen';
+import SettingsScreen from './components/SettingsScreen';
+import TerminalButton from './components/TerminalButton';
+import CustomPresetPanel, { CustomPresetConfig } from './components/CustomPresetPanel';
+
+import { useHistory } from './hooks/useHistory';
+
+import { useTheme } from './contexts/ThemeContext';
+
+type Preset = 'Minify' | 'Weak' | 'Medium' | 'Strong' | 'Custom';
+type Page = 'home' | 'about' | 'updates' | 'settings';
+type LogSeverity = 'info' | 'warning' | 'error';
+
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  message: string;
+  severity: LogSeverity;
+  isNew?: boolean;
+}
+
+interface FileData {
+  name: string;
+  content: string;
+  ext: string;
+}
+
+const ASCII_HEADER = `꓄ꃅꍟ ꉣꃅꍏꈤ꓄ꂦꂵ ꌗꉣꀤꋪꀤ꓄`;
+
+const analyzeFileContent = async (file: File): Promise<{ type: string, isText: boolean, error?: string }> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const bytes = new Uint8Array(buffer);
+      
+      if (bytes.length >= 4) {
+        // Check magic numbers
+        if (bytes[0] === 0x1B && bytes[1] === 0x4C && bytes[2] === 0x75 && bytes[3] === 0x61) {
+          return resolve({ type: 'Compiled Lua', isText: false, error: 'Compiled Lua files are not supported for obfuscation.' });
+        }
+        if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+          return resolve({ type: 'ZIP/APK Archive', isText: false, error: 'Archives are not supported.' });
+        }
+        if (bytes[0] === 0x7F && bytes[1] === 0x45 && bytes[2] === 0x4C && bytes[3] === 0x46) {
+          return resolve({ type: 'ELF Executable', isText: false, error: 'Executables are not supported.' });
+        }
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+          return resolve({ type: 'PNG Image', isText: false, error: 'Images are not supported.' });
+        }
+        if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+          return resolve({ type: 'PDF Document', isText: false, error: 'PDFs are not supported.' });
+        }
+      }
+      
+      // Basic text detection: check for null bytes in the first chunk
+      let isText = true;
+      for (let i = 0; i < Math.min(bytes.length, 512); i++) {
+        if (bytes[i] === 0) {
+          isText = false;
+          break;
+        }
+      }
+      
+      if (!isText) {
+        return resolve({ type: 'Binary Data', isText: false, error: 'Binary files are not supported. Please upload plain text or Lua source code.' });
+      }
+      
+      resolve({ type: 'Text/Source Code', isText: true });
+    };
+    
+    reader.onerror = () => resolve({ type: 'Unknown', isText: false, error: 'Failed to read file for analysis.' });
+    
+    const slice = file.slice(0, 512);
+    reader.readAsArrayBuffer(slice);
+  });
+};
+
+export const PlayStoreSpinner = () => (
+  <svg className="play-spinner inline-block ml-2 align-middle" viewBox="25 25 50 50">
+    <circle cx="50" cy="50" r="20"></circle>
+  </svg>
+);
+
+export const PlayStoreProgressBar = ({ isProcessing }: { isProcessing: boolean }) => (
+  <div className="fixed top-0 left-0 w-full h-1 z-[100] overflow-hidden bg-transparent">
+    <AnimatePresence>
+      {isProcessing && (
+        <>
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: '100%' }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.5,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            className="absolute top-0 left-0 w-1/2 h-full bg-primary shadow-[0_0_10px_var(--theme-primary)]"
+          />
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: '100%' }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.5,
+              delay: 0.5,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            className="absolute top-0 left-0 w-1/4 h-full bg-primary/60"
+          />
+        </>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
+const TypewriterText = ({ text, speed = 10, animate = true }: { text: string, speed?: number, animate?: boolean }) => {
+  const [displayedText, setDisplayedText] = useState(animate ? '' : text);
+  const [index, setIndex] = useState(animate ? 0 : text.length);
+
+  useEffect(() => {
+    if (animate && index < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[index]);
+        setIndex(prev => prev + 1);
+      }, speed);
+      return () => clearTimeout(timeout);
+    }
+  }, [index, text, speed, animate]);
+
+  return <span>{displayedText}{animate && index < text.length && <span className="animate-pulse">_</span>}</span>;
+};
+
+export default function App() {
+  const [logs, setLogs] = useState<LogEntry[]>([
+    { id: '1', timestamp: new Date().toLocaleTimeString(), message: ASCII_HEADER, severity: 'info', isNew: true },
+    { id: '2', timestamp: new Date().toLocaleTimeString(), message: '$> Ready.', severity: 'info', isNew: true }
+  ]);
+  const [logFilter, setLogFilter] = useState<LogSeverity | 'all'>('all');
+  const [file, setFile] = useState<FileData | null>(null);
+  const [preset, setPreset] = useState<Preset>('Minify');
+  const [customConfig, setCustomConfig, { undo: undoConfig, redo: redoConfig, canUndo: canUndoConfig, canRedo: canRedoConfig }] = useHistory<CustomPresetConfig>({
+    LuaVersion: 'Lua51',
+    VarNamePrefix: '',
+    NameGenerator: 'MangledShuffled',
+    PrettyPrint: false,
+    Seed: 0,
+    MinLength: 4,
+    MaxLength: 12,
+    Steps: []
+  });
+  const [resultData, setResultData, { undo: undoResult, redo: redoResult, canUndo: canUndoResult, canRedo: canRedoResult }] = useHistory<{ content: string | null, fileName: string | null }>({ content: null, fileName: null });
+  const result = resultData.content;
+  const resultFileName = resultData.fileName;
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  const addLog = (msg: string, severity: LogSeverity = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [...prev, { id: Math.random().toString(36).substring(2, 9), timestamp, message: msg, severity, isNew: true }]);
+  };
+
+  const handleDownloadAPK = async () => {
+    addLog('$> Fetching Promcrypt APK...');
+    try {
+      // Try to fetch the actual APK from the public folder
+      const response = await fetch('/promcrypt.apk', { method: 'HEAD' });
+      
+      if (response.ok) {
+        addLog('$> Download started: promcrypt.apk');
+        const a = document.createElement('a');
+        a.href = '/promcrypt.apk';
+        a.download = 'promcrypt.apk';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        addLog('$> ERROR: Real APK not found on server.', 'error');
+        addLog('$> FIX: Please upload your actual "promcrypt.apk" file into the "public" folder of this project using the file explorer on the left.', 'warning');
+        addLog('$> The previous download was a placeholder text file, which causes the "problem parsing the package" error on Android.', 'info');
+      }
+    } catch (err: any) {
+      addLog(`$> Error checking for APK: ${err.message}`, 'error');
+    }
+  };
+
+  const processFile = async (uploadedFile: File) => {
+    const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || '';
+    
+    addLog(`$> Analyzing file: ${uploadedFile.name}...`);
+    
+    const analysis = await analyzeFileContent(uploadedFile);
+    
+    if (!analysis.isText) {
+      addLog(`$> Error: Detected ${analysis.type}. ${analysis.error}`, 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
+    if (ext !== 'txt' && ext !== 'lua') {
+      addLog(`$> Warning: File extension .${ext} is unusual, but content appears to be text. Proceeding...`, 'warning');
+    }
+
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        setFile({
+          name: uploadedFile.name,
+          content,
+          ext
+        });
+        setResultData({ content: null, fileName: null });
+        addLog(`$> Loaded file: ${uploadedFile.name} (${content.length} bytes)`);
+      } catch (err) {
+        addLog(`$> Error: Failed to process file content.`, 'error');
+      }
+    };
+    
+    reader.onerror = () => {
+      addLog(`$> Error: I/O error occurred while reading the file.`, 'error');
+    };
+    
+    reader.onabort = () => {
+      addLog(`$> Error: File reading was aborted.`, 'error');
+    };
+    
+    reader.readAsText(uploadedFile);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = e.target.files?.[0];
+    if (uploadedFile) {
+      processFile(uploadedFile);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      processFile(droppedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handlePresetChange = (newPreset: Preset) => {
+    setPreset(newPreset);
+    addLog(`$> Preset changed to: ${newPreset}`);
+  };
+
+  const handleRun = async () => {
+    if (!file) {
+      addLog('$> No file uploaded.', 'error');
+      return;
+    }
+
+    setIsProcessing(true);
+    addLog(`$> [${preset}] applied to ${file.name}`);
+    
+    try {
+      let finalContent = '';
+      let finalName = '';
+
+      addLog(`$> Obfuscating with preset: ${preset}...`);
+      // Yield to event loop so UI can update
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const configToUse = preset === 'Custom' ? customConfig : preset;
+      
+      const worker = new Worker(new URL('./obfuscator.worker.ts', import.meta.url), { type: 'module' });
+      
+      const workerPromise = new Promise<string>((resolve, reject) => {
+        worker.onmessage = (e) => {
+          if (e.data.success) {
+            resolve(e.data.result);
+          } else {
+            reject(new Error(e.data.error));
+          }
+        };
+        worker.onerror = (err) => {
+          reject(new Error('Worker error: ' + err.message));
+        };
+      });
+
+      worker.postMessage({ code: file.content, config: configToUse });
+      
+      finalContent = await workerPromise;
+      worker.terminate();
+
+      finalContent = `return(function(...)local shadowdev1={"${finalContent.replace(/"/g, '\\"')}"}
+end)(...)`;
+      finalName = file.name.replace(/\.(txt|lua)$/, `.${preset.toLowerCase()}.lua`);
+      
+      addLog(`$> Obfuscation complete.`);
+
+      setResultData({ content: finalContent, fileName: finalName });
+      
+      const preview = finalContent.length > 100 ? finalContent.substring(0, 100) + '...' : finalContent;
+      addLog(`$> Result (${finalContent.length} bytes):\n${preview}`);
+      
+    } catch (err: any) {
+      addLog(`$> Error during processing: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownloadResult = () => {
+    if (!result || !resultFileName) {
+      addLog('$> No result to download. Run a preset first.', 'error');
+      return;
+    }
+
+    const blob = new Blob([result], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = resultFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    addLog(`$> Download ready: ${resultFileName}`);
+  };
+
+  const handleReset = () => {
+    setLogs([
+      { id: 'reset-1', timestamp: new Date().toLocaleTimeString(), message: ASCII_HEADER, severity: 'info' },
+      { id: 'reset-2', timestamp: new Date().toLocaleTimeString(), message: '$> System reset.', severity: 'info' },
+      { id: 'reset-3', timestamp: new Date().toLocaleTimeString(), message: '$> Ready.', severity: 'info' }
+    ]);
+    setFile(null);
+    setPreset('Minify');
+    setResultData({ content: null, fileName: null });
+  };
+
+  const copyToClipboard = () => {
+    if (!result) {
+      addLog('$> No result to copy.', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(result).then(() => {
+      addLog('$> Result copied to clipboard.');
+    }).catch(err => {
+      addLog(`$> Error copying to clipboard: ${err}`, 'error');
+    });
+  };
+
+  return (
+    <div 
+      className={`min-h-screen bg-bg-base text-text-base font-mono p-4 md:p-8 flex flex-col max-w-6xl mx-auto crt-text-effect relative ${isProcessing ? 'cursor-wait' : 'cursor-default'}`}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      <PlayStoreProgressBar isProcessing={isProcessing} />
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-primary/20 backdrop-blur-sm border-4 border-dashed border-primary flex items-center justify-center rounded-2xl m-4 pointer-events-none">
+          <div className="text-center bg-bg-base/80 p-12 rounded-xl border-2 border-primary shadow-[0_0_50px_var(--theme-primary)]">
+            <div className="text-6xl mb-4 animate-bounce">📁</div>
+            <h2 className="text-4xl font-bold text-primary uppercase tracking-widest">Drop Lua File Here</h2>
+            <p className="mt-4 text-xl opacity-80">Release to upload and start obfuscation</p>
+          </div>
+        </div>
+      )}
+      {/* Header Logo */}
+      <div className="flex justify-between items-start mb-8 relative z-10 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
+          <h1 className="text-primary font-bold text-2xl sm:text-3xl md:text-4xl tracking-widest leading-tight [text-shadow:0_0_10px_var(--theme-primary),0_0_20px_var(--theme-primary)] animate-marquee whitespace-nowrap">
+            {ASCII_HEADER}
+          </h1>
+        </motion.div>
+        <div className="flex gap-2">
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex gap-4 mb-6 border-b border-primary pb-4 relative z-10 overflow-x-auto whitespace-nowrap">
+        {(['home', 'about', 'updates', 'settings'] as Page[]).map(page => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`uppercase text-sm ${currentPage === page ? 'font-bold underline' : 'opacity-70 hover:opacity-100'}`}
+          >
+            {page === 'about' ? 'About / Help' : page}
+          </button>
+        ))}
+      </nav>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPage}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="relative z-10"
+        >
+          {currentPage === 'home' && (
+            <>
+              {/* Log Filter UI */}
+              <div className="flex gap-2 mb-2 items-center overflow-x-auto pb-2">
+                <span className="text-xs uppercase opacity-70 whitespace-nowrap">Filter Logs:</span>
+                {(['all', 'info', 'warning', 'error'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setLogFilter(f)}
+                    className={`text-[10px] uppercase px-2 py-0.5 border transition-all ${
+                      logFilter === f 
+                        ? 'bg-primary text-bg-base border-primary font-bold' 
+                        : 'border-primary/30 hover:border-primary/60'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setLogs([])}
+                  className="text-[10px] uppercase px-2 py-0.5 border border-red-500/50 text-red-500 hover:bg-red-500/10 ml-auto"
+                >
+                  Clear
+                </button>
+              </div>
+
+              {/* Log Pane */}
+              <div className="crt-container border-2 border-primary p-4 h-[400px] overflow-y-auto mb-6 bg-bg-base shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] relative">
+                <div className="crt-overlay" />
+                <div className="crt-scanline" />
+                <div className="flex flex-col gap-1 font-mono text-sm md:text-base leading-relaxed relative z-10">
+                  {logs
+                    .filter(log => logFilter === 'all' || log.severity === logFilter)
+                    .map(log => (
+                      <div key={log.id} className="flex gap-2 group">
+                        <span className="opacity-30 text-[10px] select-none whitespace-nowrap">[{log.timestamp}]</span>
+                        <span className={`
+                          ${log.severity === 'error' ? 'text-red-500 font-bold' : ''}
+                          ${log.severity === 'warning' ? 'text-yellow-500' : ''}
+                          ${log.severity === 'info' ? 'text-text-base' : ''}
+                          break-all
+                        `}>
+                          <TypewriterText text={log.message} speed={5} animate={log.isNew} />
+                        </span>
+                      </div>
+                    ))}
+                  {isProcessing ? (
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-30 text-[10px]">[{new Date().toLocaleTimeString()}]</span>
+                      <PlayStoreSpinner />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-30 text-[10px]">[{new Date().toLocaleTimeString()}]</span>
+                      <span className="animate-pulse">_</span>
+                    </div>
+                  )}
+                </div>
+                <div ref={logEndRef} />
+              </div>
+
+              {/* Status Line */}
+              <div className="mb-6 flex justify-between items-center text-sm border-b border-primary pb-2">
+                <div>
+                  <span className="opacity-70">FILE: </span>
+                  <span className="font-bold">{file ? file.name : 'NONE'}</span>
+                </div>
+                <div>
+                  <span className="opacity-70">PRESET: </span>
+                  <span className="font-bold">{preset}</span>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-col gap-6">
+                {/* Main Actions */}
+                <div className="flex flex-wrap gap-4">
+                  <TerminalButton 
+                    onClick={handleDownloadAPK}
+                  >
+                    Download APK
+                  </TerminalButton>
+                  
+                  <input 
+                    type="file" 
+                    accept="*" 
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden" 
+                  />
+                  <TerminalButton 
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Upload File
+                  </TerminalButton>
+                </div>
+
+                {/* Presets */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="uppercase text-sm mr-2 opacity-70">Select Preset:</span>
+                  {(['Minify', 'Weak', 'Medium', 'Strong', 'Custom'] as Preset[]).map(p => (
+                    <TerminalButton
+                      key={p}
+                      onClick={() => handlePresetChange(p)}
+                      className={preset === p ? 'bg-primary text-bg-base font-bold' : ''}
+                    >
+                      {p}
+                    </TerminalButton>
+                  ))}
+                </div>
+
+                {preset === 'Custom' && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2 justify-end">
+                      <TerminalButton onClick={undoConfig} disabled={!canUndoConfig} className="text-xs py-1 px-2">Undo</TerminalButton>
+                      <TerminalButton onClick={redoConfig} disabled={!canRedoConfig} className="text-xs py-1 px-2">Redo</TerminalButton>
+                    </div>
+                    <CustomPresetPanel config={customConfig} onChange={setCustomConfig} />
+                  </div>
+                )}
+
+                {/* Execution Actions */}
+                <div className="flex flex-wrap gap-4 mt-2">
+                  <TerminalButton 
+                    onClick={handleRun}
+                    disabled={isProcessing}
+                    className="font-bold"
+                  >
+                    {isProcessing ? 'Processing...' : 'Run'}
+                  </TerminalButton>
+                  
+                  <TerminalButton 
+                    onClick={handleDownloadResult}
+                    disabled={!result}
+                  >
+                    Download Result
+                  </TerminalButton>
+
+                  <TerminalButton 
+                    onClick={copyToClipboard}
+                    disabled={!result}
+                  >
+                    Copy Result
+                  </TerminalButton>
+
+                  <div className="flex gap-2 ml-auto">
+                    <TerminalButton 
+                      onClick={undoResult}
+                      disabled={!canUndoResult}
+                      className="text-xs py-1 px-2"
+                    >
+                      Undo Result
+                    </TerminalButton>
+                    <TerminalButton 
+                      onClick={redoResult}
+                      disabled={!canRedoResult}
+                      className="text-xs py-1 px-2"
+                    >
+                      Redo Result
+                    </TerminalButton>
+                  </div>
+                  
+                  <TerminalButton 
+                    onClick={handleReset}
+                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-bg-base"
+                  >
+                    Reset
+                  </TerminalButton>
+                </div>
+              </div>
+            </>
+          )}
+          {currentPage === 'about' && <AboutScreen />}
+          {currentPage === 'updates' && <WhatsNewScreen />}
+          {currentPage === 'settings' && <SettingsScreen />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,0 +1,5 @@
+{
+  "name": "PromCrypt Terminal",
+  "description": "A retro-terminal web application to download Prometheus, minify Lua scripts, and apply AES encryption presets.",
+  "requestFramePermissions": []
+}
